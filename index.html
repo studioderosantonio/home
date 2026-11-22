@@ -1112,6 +1112,27 @@ footer{background:var(--inchiostro);color:#fff;padding:clamp(90px,10vw,140px) 0 
   #metodo .method-left{padding-top:clamp(10px,2svh,18px)!important}
 }
 
+
+
+/* V23 — Metodo: cornice chiara equilibrata e scroll senza salti in risalita. */
+@media (max-width:900px) and (orientation:portrait){
+  /* Lo snap verticale globale provocava salti avanti e indietro tra le tre schede. */
+  html{scroll-snap-type:none!important}
+}
+@media (max-width:900px) and (orientation:portrait) and (min-height:521px) and (prefers-reduced-motion:no-preference){
+  /* Scena ancorata al margine superiore, non a un header che appare/scompare:
+     così la fascia chiara non si allunga quando si torna verso l'alto. */
+  #metodo .method-pin{top:0;height:100svh}
+  #metodo .method-left{
+    padding:calc(var(--nav) + 16px) var(--gutter) 16px!important;
+  }
+  /* Margini chiari simmetrici attorno al titolo; nessuna scheda ridimensionata. */
+  #metodo .method-left h2{margin:0 auto!important}
+}
+@media (max-width:900px) and (max-height:650px) and (orientation:portrait) and (min-height:521px) and (prefers-reduced-motion:no-preference){
+  #metodo .method-left{padding:calc(var(--nav) + 9px) var(--gutter) 10px!important}
+}
+
 </style>
 </head>
 <body>
@@ -1500,7 +1521,7 @@ function layout(){
   if(!pinned()){method.style.height='';audience.style.height='';servicesScene.style.height='';return}
   if(svcPinned()){const sh=pinH(servicesScene);servicesScene.style.height=(sh+sh*(isMobile()?7.2:3.6))+'px'}else servicesScene.style.height='';
   const mh=pinH(method);
-  method.style.height=(mh+mh*(isMobile()?1.65:1.75))+'px';
+  method.style.height=(mh+mh*(isMobile()?1.50:1.75))+'px';
   if(nativeAudience()){
     audience.style.height='auto';
     reel.style.transform='none';
@@ -1519,13 +1540,9 @@ const M_HOLD=.86,A_HOLD=.8;
 const svcStop=i=>i===0?0:(i+.5)/services.length;
 const methodStops=[0,.5*M_HOLD,M_HOLD],audStops=[0,A_HOLD/3,A_HOLD*2/3,A_HOLD];
 function placeSnaps(){
+  // V23: niente punti di aggancio verticali su mobile. Le card restano
+  // collegate allo scroll ma il ritorno verso l'alto rimane continuo.
   $$('.snap-pt').forEach(n=>n.remove());
-  if(!pinned()||!isMobile())return;
-  const pad=parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop)||0;
-  const add=(el,fr)=>{const room=el.offsetHeight-pinH(el);fr.forEach(f=>{const d=document.createElement('i');d.className='snap-pt';d.setAttribute('aria-hidden','true');d.style.top=(room*f+pad)+'px';el.appendChild(d)})};
-  add(method,methodStops);
-  if(svcPinned())add(servicesScene,services.map((_,i)=>svcStop(i)));
-  if(!nativeAudience())add(audience,audStops);
 }
 let mCur=null,aCur=null;const SMOOTH=.16;
 cards.forEach(c=>{const sh=document.createElement('span');sh.className='stack-shade';sh.setAttribute('aria-hidden','true');c.appendChild(sh);c._shade=sh});
@@ -1534,7 +1551,12 @@ function frame(){
   bar.style.transform=`scaleX(${y/max})`;
   nav.classList.toggle('scrolled',y>20);
   const goingDown=y>lastY+4,goingUp=y<lastY-4;
-  if(y<hero.offsetHeight*.7||goingUp)nav.classList.remove('hidden');else if(goingDown&&!links.classList.contains('open'))nav.classList.add('hidden');
+  // Su mobile la testata del metodo riserva lo spazio della navbar:
+  // la teniamo visibile mentre la sezione è fissata per evitare fasce chiare
+  // che cambiano altezza apparente scorrendo in su/giù.
+  const methodRect=method.getBoundingClientRect();
+  const methodPinnedOnPhone=isMobile()&&methodRect.top<=1&&methodRect.bottom>innerHeight*.5;
+  if(y<hero.offsetHeight*.7||goingUp||methodPinnedOnPhone)nav.classList.remove('hidden');else if(goingDown&&!links.classList.contains('open'))nav.classList.add('hidden');
   lastY=y;
   const inStage=[method,audience,...(svcPinned()?[servicesScene]:[])].some(el=>{const r=el.getBoundingClientRect();return pinned()&&r.top<innerHeight*.5&&r.bottom>innerHeight*.5});
   floater.classList.toggle('show',y>hero.offsetHeight*.6&&!footerVisible&&!inStage);
